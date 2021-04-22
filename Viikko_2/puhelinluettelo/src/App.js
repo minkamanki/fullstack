@@ -1,4 +1,5 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import personService from './services/persons'
 
 const Filter = (props) => {
   return (
@@ -26,23 +27,33 @@ const PersonForm = (props) => {
 const Persons = (props) => {
   return (
     <ul>
-      {props.persons.filter(person => person.name.toLowerCase().includes(props.newFilter.toLowerCase())).map(person => <div key={person.name}>{person.name} {person.number}</div>)}
+      {props.persons.filter(person =>
+        person.name.toLowerCase().includes(props.newFilter.toLowerCase())).map(person =>
+          <div key={person.name}>
+            {person.name} {person.number}
+            <button onClick={props.deletePerson} name={person.name} id={person.id}>delete</button>
+          </div>
+        )
+      }
     </ul>
   )
 }
+
 const App = () => {
-  const [persons, setPersons] = useState([
-    { name: 'Arto Hellas', number: '040-123456' },
-    { name: 'Ada Lovelace', number: '39-44-5323523' },
-    { name: 'Dan Abramov', number: '12-43-234345' },
-    { name: 'Mary Poppendieck', number: '39-23-6423122' }
-  ])
+  const [persons, setPersons] = useState([])
   const [newName, setNewName] = useState('')
 
   const [newNumber, setNewNumber] = useState('')
 
   const [newFilter, setNewFilter] = useState('')
 
+  useEffect(() => {
+    personService
+      .getAll()
+      .then(initialPersons => {
+        setPersons(initialPersons)
+      })
+  }, [])
 
   const handleNameChange = (event) => {
     setNewName(event.target.value)
@@ -58,15 +69,45 @@ const App = () => {
 
   const addPerson = (event) => {
     event.preventDefault()
+    const personObject = {
+      name: newName,
+      number: newNumber
+    }
     if (persons.some((person) => person.name === newName)) {
-      window.alert(`${newName} is already added to phonebook`);
+      if (window.confirm(`${newName} is already added to phonebook, replace the old number with new one?`)) {
+        personService
+          .update(persons.find(person => person.name === newName).id, personObject)
+          .then(returnedPerson => {
+            setPersons(persons.concat(returnedPerson))
+            window.location.reload();
+          })
+      }
     } else {
-      var newPerson = { name: newName, number: newNumber }
-      const copy = [...persons, newPerson]
-      setPersons(copy)
+      personService
+        .create(personObject)
+        .then(returnedPerson => {
+          setPersons(persons.concat(returnedPerson))
+          setNewName('')
+          setNewNumber('')
+        })
     }
 
   }
+
+
+  const deletePerson = (event) => {
+    event.preventDefault()
+    if (window.confirm(`Delete ${event.target.name}?`)) {
+      personService.deleteContact(event.target.id)
+      personService
+        .getAll()
+        .then(initialPersons => {
+          setPersons(initialPersons)
+          window.location.reload();
+        })
+    }
+  }
+
   return (
     <div>
       <h2>Phonebook</h2>
@@ -81,7 +122,7 @@ const App = () => {
         handleNumberChange={handleNumberChange} />
 
       <h2>Numbers</h2>
-      <Persons persons={persons} newFilter={newFilter} />
+      <Persons persons={persons} newFilter={newFilter} deletePerson={deletePerson} />
     </div>
   )
 
