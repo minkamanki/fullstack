@@ -39,6 +39,30 @@ const Persons = (props) => {
   )
 }
 
+const Notification = ({ message }) => {
+  if (message === null) {
+    return null
+  }
+
+  return (
+    <div className="message">
+      {message}
+    </div>
+  )
+}
+
+const ErrorNotification = ({ error }) => {
+  if (error === null) {
+    return null
+  }
+
+  return (
+    <div className="error">
+      {error}
+    </div>
+  )
+}
+
 const App = () => {
   const [persons, setPersons] = useState([])
   const [newName, setNewName] = useState('')
@@ -46,6 +70,8 @@ const App = () => {
   const [newNumber, setNewNumber] = useState('')
 
   const [newFilter, setNewFilter] = useState('')
+  const [message, setMessage] = useState(null)
+  const [error, setErrorMessage] = useState(null)
 
   useEffect(() => {
     personService
@@ -77,9 +103,23 @@ const App = () => {
       if (window.confirm(`${newName} is already added to phonebook, replace the old number with new one?`)) {
         personService
           .update(persons.find(person => person.name === newName).id, personObject)
-          .then(returnedPerson => {
-            setPersons(persons.concat(returnedPerson))
-            window.location.reload();
+          .then(returnedPersons => {
+            setPersons(returnedPersons)
+            setMessage(
+              `Updated ${newName}`
+            )
+            setTimeout(() => {
+              setMessage(null)
+            }, 5000)
+          })
+          .catch(error => {
+            setErrorMessage(
+              `Person was already removed from server`
+            )
+            setTimeout(() => {
+              setErrorMessage(null)
+            }, 5000)
+            setPersons(persons.filter(person => person.id !== event.target.id))
           })
       }
     } else {
@@ -87,8 +127,15 @@ const App = () => {
         .create(personObject)
         .then(returnedPerson => {
           setPersons(persons.concat(returnedPerson))
+          setMessage(
+            `Added ${newName}`
+          )
           setNewName('')
           setNewNumber('')
+          setTimeout(() => {
+            setMessage(null)
+          }, 5000)
+
         })
     }
 
@@ -98,12 +145,16 @@ const App = () => {
   const deletePerson = (event) => {
     event.preventDefault()
     if (window.confirm(`Delete ${event.target.name}?`)) {
-      personService.deleteContact(event.target.id)
       personService
-        .getAll()
+        .deleteContact(event.target.id)
         .then(initialPersons => {
           setPersons(initialPersons)
-          window.location.reload();
+          setMessage(
+            `Deleted`
+          )
+          setTimeout(() => {
+            setMessage(null)
+          }, 5000)
         })
     }
   }
@@ -111,6 +162,8 @@ const App = () => {
   return (
     <div>
       <h2>Phonebook</h2>
+      <Notification message={message} />
+      <ErrorNotification error={error} />
       <Filter newFilter={newFilter} handleFilterChange={handleFilterChange} />
 
       <h3>Add a new</h3>
